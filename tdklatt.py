@@ -1,9 +1,11 @@
 """
 tdklatt.py
-
+By guestdaniel. Now being reviewed by ferrum-cccp.
 Provides a number of functions and classes which enable the user to synthesize
 speech waveforms ala Klatt 1980. Currently supports the Klatt 1980 algorithm at
 10 kHz sampling rate.
+
+It doesn't work so well after twisting stuff. --Fe
 
 Classes:
     KlattParam1980: Object containing all paramteres for Klatt synthesizer
@@ -79,7 +81,7 @@ def klatt_make(params=None):
                     [getattr(params, param)[i] for i in range(params.N_FORM)]
         else:
             synth.params[param] = getattr(params, param)
-    synth.setup()
+    synth.setup() # What's that? --Fe
     return(synth)
 
 
@@ -88,18 +90,26 @@ class KlattParam1980(object):
     Class container for parameters for Klatt 1980 synthesizer.
 
     Arguments:
+	FS: Frame/Second? --Fe
+	Dur: Duration --Fe
+	N_SAMP: Sample #? --Fe
+	N_FORM: Formant #? --Fe
+	VER: Version --Fe
+	DT:Frame Duration --Fe
+    And the rest of them are all time-varying. --Fe
         F0 (float): Fundamental frequency in Hz
         FF (list): List of floats, each one corresponds to a formant frequency
             in Hz
         BW (list): List of floats, each one corresponds to the bandwidth of a
             formant in Hz in terms of plus minus 3dB
         AV (float): Amplitude of voicing in dB
-        AVS (float): Amplitude of quasi-sinusoidal voicing in dB
+        AVS (float): Amplitude of quasi(in some sense or degree --Fe)-sinusoidal(that is, like a sine wave --Fe) voicing in dB
+		      Fe: Hmmm
         AH (float): Amplitude of aspiration in dB
         AF (float): Amplitude of frication in dB
         SW (0 or 1): Controls switch from voicing waveform generator to cascade
             or parallel resonators
-        FGP (float): Frequency of the glottal resonator 1 in Hz
+        FGP (float): Frequency of the glottal resonator 1 in Hz (re-son-at-or --Fe)
         BGP (float): Bandwidth of glottal resonator 1 in Hz
         FGZ (float): Frequency of glottal zero in Hz
         BGZ (float): Bandwidth of glottal zero in Hz
@@ -162,6 +172,7 @@ class KlattParam1980(object):
 class KlattSynth(object):
     """
     Synthesizes speech ala Klatt 1980 and Klatt 1990.
+	What a good job! --Fe
 
     Attributes:
         name (string): Name of this synthesizer
@@ -292,8 +303,8 @@ class KlattSynth(object):
         """
         Transforms output waveform to form amenable for playing/saving.
         """
-        assert self.params["FS"] == 10_000
-        y = resample_poly(self.output, 8, 5)  # resample from 10K to 16K
+        #assert self.params["FS"] == 10_000 #Huh?
+        y = resample_poly(self.output, 5, 5)  # resample from 10K to 16K
         maxabs = np.max(np.abs(y))
         if maxabs > 1:
             y /= maxabs
@@ -589,7 +600,7 @@ class KlattNoise1980(KlattSection):
     def do(self):
         self.noisegen.generate()
         self.lowpass.filter()
-        self.amp.amplify(dB=-60)  # TODO: Need to figure out a real value
+        self.amp.amplify(dB=-80)  # TODO: Need to figure out a real value
 
 
 class KlattCascade1980(KlattSection):
@@ -1169,45 +1180,57 @@ class Switch(KlattComponent):
 
 
 if __name__ == '__main__':
-    s = klatt_make(KlattParam1980(DUR=0.5)) # Creates a Klatt synthesizer w/ default settings
+    s = klatt_make(KlattParam1980(DUR=0.5,FS=16000)) # Creates a Klatt synthesizer w/ default settings
     # see also: http://www.fon.hum.uva.nl/david/ma_ssp/doc/Klatt-1980-JAS000971.pdf
+    # I haven't figured out how it generates stops. --Fe
+
     N = s.params["N_SAMP"]
     F0 = s.params["F0"]
     FF = np.asarray(s.params["FF"]).T
     AV = s.params["AV"]
     AH = s.params['AH']
 
-    # amplitude / voicing
-    AV[:] = np.linspace(1, 0, N) ** 0.1 * 60
-    if 1:  # unvoiced consonant
-        Nv1 = 800  # start of unvoiced-voiced transition
-        Nv2 = 1000  # end of unvoiced-voiced transition
-        AV[:Nv1] = 0
-        AH[:Nv1] = 55
-        AV[Nv1:Nv2] = np.linspace(0, AV[Nv2], Nv2-Nv1)
-        AH[Nv1:Nv2] = np.linspace(55, 0, Nv2-Nv1)
-
-
     # F0
-    F0[:] = np.linspace(120, 70, N)  # a falling F0 contour
+    F0[:] = np.linspace(250, 250, N)  # a falling F0 contour
+
+
+    # amplitude / voicing
+    AH[:] = np.linspace(1, 0, N) ** 0.1 * 30
+    if 0:  # unvoiced consonant
+        Nv1 = 1000  # start of unvoiced-voiced transition
+        Nv2 = 1500  # end of unvoiced-voiced transition
+        Nv3 = 2300
+        AV[:Nv1] = 0
+        AH[:Nv2] = 55
+        AV[Nv1:Nv3] = np.linspace(0, AV[Nv2], Nv3-Nv1)
+        AH[Nv2:Nv3] = np.linspace(55, 0, Nv3-Nv2)
+
 
     # FF
-    target1 = np.r_[300, 1000, 2600]  # /b/
-    #target2 = np.r_[280, 2250, 2750]  # /i/
-    target2 = np.r_[750, 1300, 2600]  # /A/
+    #target1 = np.r_[280, 2250, 2750]  # /b/
+    target1 = np.r_[280, 2250, 2750]  # /b/ ?
+    target2 = np.r_[280, 2250, 2750]  # /i/
+    #target2 = np.r_[750, 1300, 2600]  # /A/
+    #target2 = np.r_[280, 2500, 2600]  # /i dont know what/
     if 0:  # linear transition
         xfade = np.linspace(1, 0, N)
-    else:  # exponential transition
+    elif 0:  # exponential transition
         n = np.arange(N)
         scaler = 20
         xfade = 2 / (1 + np.exp(scaler * n / (N-1)))
-    FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
+    else:
+        xfade = np.linspace(1,1,N)
+    print(xfade)
+
+    #FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
+    FF[:,:3] =  np.outer(xfade, target2)
 
     # synthesize
     s.params["FF"] = FF.T
+
     s.run()
-    s.play()
-    s.save('synth.wav')
+    #s.play()
+    s.save('synth3.wav')
 
     # visualize
     t = np.arange(len(s.output)) / s.params['FS']
