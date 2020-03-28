@@ -130,7 +130,7 @@ class KlattParam1980(object):
         Each of the above time-varying parameters is stored as an attribute in
             the form of a Numpy array.
     """
-    def __init__(self, FS=10000, N_FORM=5, DUR=1, F0=100,
+    def __init__(self, FS=16000, N_FORM=5, DUR=1, F0=100,
                        FF=[500, 1500, 2500, 3500, 4500],
                        BW=[50, 100, 100, 200, 250],
                        AV=60, AVS=0, AH=0, AF=0,
