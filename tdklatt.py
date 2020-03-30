@@ -81,7 +81,7 @@ def klatt_make(params=None):
                     [getattr(params, param)[i] for i in range(params.N_FORM)]
         else:
             synth.params[param] = getattr(params, param)
-    synth.setup() # What's that? --Fe
+    synth.setup() 
     return(synth)
 
 
@@ -118,12 +118,14 @@ class KlattParam1980(object):
         FNZ (float): Frequency on the nasal zero in Hz
         BNZ (float): Bandwidth of nasal zero in Hz
         BGS (float): Glottal resonator 2 bandwidth in Hz
-        A1 (float): Amplitude of parallel formant 1 in Hz
+        A1 (float): Amplitude of parallel formant 1 in Hz (Amplitude in Hz? Perhaps it
+            should be dB here. --Fe)
         A2 (float): Amplitude of parallel formant 2 in Hz
         A3 (float): Amplitude of parallel formant 3 in Hz
         A4 (float): Amplitude of parallel formant 4 in Hz
         A5 (float): Amplitude of parallel formant 5 in Hz
         A6 (float): Amplitude of parallel formant 6 in Hz
+        AB (float): Bypass path amplitude in dB (Added by Fe, not proceeded yet, TODO)
         AN (float): Amplitude of nasal formant in dB
 
     Attributes:
@@ -136,7 +138,7 @@ class KlattParam1980(object):
                        AV=60, AVS=0, AH=0, AF=0,
                        SW=0, FGP=0, BGP=100, FGZ=1500, BGZ=6000,
                        FNP=250, BNP=100, FNZ=250, BNZ=100, BGS=200,
-                       A1=0, A2=0, A3=0, A4=0, A5=0, A6=0, AN=0):
+                       A1=0, A2=0, A3=0, A4=0, A5=0, A6=0, AB=0, AN=0):
         self.FS = FS
         self.DUR = DUR
         self.N_FORM = N_FORM
@@ -166,6 +168,7 @@ class KlattParam1980(object):
         self.A4 = np.ones(self.N_SAMP)*A4
         self.A5 = np.ones(self.N_SAMP)*A5
         self.A6 = np.ones(self.N_SAMP)*A6
+        self.AB = np.ones(self.N_SAMP)*AB
         self.AN = np.ones(self.N_SAMP)*AN
 
 
@@ -243,7 +246,8 @@ class KlattSynth(object):
                       "A1", "A2", "A3", "A4", "A5", "AN", # 1980 parallel
                       "ANV",                              # Voicing parallel
                       "SW", "INV_SAMP",                   # Synth settings
-                      "N_SAMP", "FS", "DT", "VER"]        # Synth settings
+                      "N_SAMP", "FS", "DT", "VER",        # Synth settings
+                      "A6", "AB"]                         # Unsure params --Fe
         self.params = {param: None for param in param_list}
 
     def setup(self):
@@ -279,7 +283,9 @@ class KlattSynth(object):
                              self.parallel, self.radiation, self.output_module]
             # Patch all components together within sections
             for section in self.sections:
-                section.patch()
+                section.patch() # Not declared in KlattSection
+                #But implemented in every section class
+                #See comments below
         else:
             print("Sorry, versions other than Klatt 1980 are not supported.")
 
@@ -303,8 +309,7 @@ class KlattSynth(object):
         """
         Transforms output waveform to form amenable for playing/saving.
         """
-        #assert self.params["FS"] == 10_000 #Huh?
-        y = resample_poly(self.output, 5, 5)  # resample from 10K to 16K
+        y = resample_poly(self.output, 5, 5)  # resample from 16K to 16K
         maxabs = np.max(np.abs(y))
         if maxabs > 1:
             y /= maxabs
