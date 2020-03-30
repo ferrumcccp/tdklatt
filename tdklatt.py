@@ -81,7 +81,7 @@ def klatt_make(params=None):
                     [getattr(params, param)[i] for i in range(params.N_FORM)]
         else:
             synth.params[param] = getattr(params, param)
-    synth.setup() 
+    synth.setup()
     return(synth)
 
 
@@ -769,7 +769,7 @@ class KlattParallel1980(KlattSection):
         self.a3.connect([self.r3])
         self.a4.connect([self.r4])
         self.a5.connect([self.r5])
-        self.r6.connect([self.r6])
+        self.a6.connect([self.r6])
         for item in [self.r1, self.r2, self.r3, self.r4, self.r5, \
                      self.r6, self.rnp, self.ab]:
             item.connect([self.output_mixer])
@@ -797,6 +797,9 @@ class KlattParallel1980(KlattSection):
         self.a5.amplify(dB=self.mast.params["A5"])
         self.r5.resonate(ff=self.mast.params["FF"][4],
                          bw=self.mast.params["BW"][4])
+        self.a6.amplify(dB=self.mast.params["A6"])
+        self.r6.resonate(ff=self.mast.params["FF"][5],
+                         bw=self.mast.params["BW"][5])
         self.output_mixer.mix()
 
 
@@ -983,7 +986,7 @@ class Impulse(KlattComponent):
         to or exceeds the current glotal period (inverse of current F0).
 
         Arguments:
-            F0 (arrry): Array of F0 values at each sample
+            F0 (array): Array of F0 values at each sample
         """
         glot_period = np.round(self.mast.params["FS"]/F0)
         self.last_glot_pulse = 0
