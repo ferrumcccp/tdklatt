@@ -20,7 +20,7 @@ Functions:
         a KlattParam1980 object
 
 Examples:
-    Create a /pa/ and plot a figure showing the spectrogram and time waveform.
+    Create a sample sound and plot a figure showing the spectrogram and time waveform.
     >>> python tdklatt.py
 
     Create a synthesizer with default settings, run it, and hear the output.
@@ -1201,6 +1201,13 @@ if __name__ == '__main__':
     FF = np.asarray(s.params["FF"]).T
     AV = s.params["AV"]
     AH = s.params['AH']
+    A1 = s.params['A1']
+    A2 = s.params['A2']
+    A3 = s.params['A3']
+    A4 = s.params['A4']
+    A5 = s.params['A5']
+    A6 = s.params['A6']
+    SW = s.params['SW']
 
     # F0
     F0[:] = np.linspace(250, 250, N)  # a falling F0 contour
@@ -1232,13 +1239,20 @@ if __name__ == '__main__':
     #print(xfade)
 
     FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
+    #A3[:1000] = 47
+    print(A3)
+    #A4[:1000] = 60
+    #A5[:1000] = 62
+    #A6[:1000] = 60
+    SW[:] = 1
+
     #FF[:,:3] =  np.outer(xfade, target2)
 
     # synthesize
     s.params["FF"] = FF.T
 
     s.run()
-    #s.play()
+    s.play()
     s.save('synth3.wav')
 
     # visualize
