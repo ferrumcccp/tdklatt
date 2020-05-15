@@ -1,6 +1,6 @@
 """
 tdklatt.py
-By guestdaniel. Now being reviewed by ferrum-cccp.
+By guestdaniel. Slightly modified by ferrum-cccp.
 Provides a number of functions and classes which enable the user to synthesize
 speech waveforms ala Klatt 1980. Currently supports the Klatt 1980 algorithm at
 10 kHz sampling rate.
@@ -39,17 +39,21 @@ Examples:
     >>> s.play()
 """
 
+simpleaudio_avail=True
 try:
     import math
     import numpy as np
     from scipy.signal import resample_poly
     from scipy.io.wavfile import write
-    import simpleaudio as sa
 except ImportError:
     print("Missing one or more required modules.")
     print("Please make sure that math, numpy, scipy, and simpleaudio are installed.")
     import sys
     sys.exit()
+try:
+    import simpleaudio as sa
+except ImportError:
+    simpleaudio_avail=False
 
 def klatt_make(params=None):
     """
@@ -118,13 +122,12 @@ class KlattParam1980(object):
         FNZ (float): Frequency on the nasal zero in Hz
         BNZ (float): Bandwidth of nasal zero in Hz
         BGS (float): Glottal resonator 2 bandwidth in Hz
-        A1 (float): Amplitude of parallel formant 1 in Hz (Amplitude in Hz? Perhaps it
-            should be dB here. --Fe)
-        A2 (float): Amplitude of parallel formant 2 in Hz
-        A3 (float): Amplitude of parallel formant 3 in Hz
-        A4 (float): Amplitude of parallel formant 4 in Hz
-        A5 (float): Amplitude of parallel formant 5 in Hz
-        A6 (float): Amplitude of parallel formant 6 in Hz
+        A1 (float): Amplitude of parallel formant 1 in dB
+        A2 (float): Amplitude of parallel formant 2 in dB
+        A3 (float): Amplitude of parallel formant 3 in dB
+        A4 (float): Amplitude of parallel formant 4 in dB
+        A5 (float): Amplitude of parallel formant 5 in dB
+        A6 (float): Amplitude of parallel formant 6 in dB
         AB (float): Bypass path amplitude in dB (Added by Fe, not proceeded yet, TODO)
         AN (float): Amplitude of nasal formant in dB
 
@@ -132,9 +135,9 @@ class KlattParam1980(object):
         Each of the above time-varying parameters is stored as an attribute in
             the form of a Numpy array.
     """
-    def __init__(self, FS=16000, N_FORM=5, DUR=1, F0=100,
-                       FF=[500, 1500, 2500, 3500, 4500],
-                       BW=[50, 100, 100, 200, 250],
+    def __init__(self, FS=16000, N_FORM=6, DUR=1, F0=100,
+                       FF=[500, 1500, 2500, 3500, 4500,5500],
+                       BW=[50, 100, 100, 200, 250,290],
                        AV=60, AVS=0, AH=0, AF=0,
                        SW=0, FGP=0, BGP=100, FGZ=1500, BGZ=6000,
                        FNP=250, BNP=100, FNZ=250, BNZ=100, BGS=200,
@@ -321,7 +324,8 @@ class KlattSynth(object):
         Plays output waveform.
         """
         y = self._get_int16at16K()
-        sa.play_buffer(y, num_channels=1, bytes_per_sample=2, sample_rate=16_000)
+        if simpleaudio_avail:
+            sa.play_buffer(y, num_channels=1, bytes_per_sample=2, sample_rate=16000)
 
     def save(self, path):
         """
@@ -331,7 +335,7 @@ class KlattSynth(object):
             path (str): where the file should be saved
         """
         y = self._get_int16at16K()
-        write(path, 16_000, y)
+        write(path, 16000, y)
 
 
 ##### CLASS DEFINITIONS #####
@@ -1215,23 +1219,20 @@ if __name__ == '__main__':
 
 
     # FF
-    #target1 = np.r_[280, 2250, 2750]  # /b/
-    target1 = np.r_[280, 2250, 2750]  # /b/ ?
+    target1 = np.r_[200, 1600, 2600]  # /d/
     target2 = np.r_[280, 2250, 2750]  # /i/
-    #target2 = np.r_[750, 1300, 2600]  # /A/
-    #target2 = np.r_[280, 2500, 2600]  # /i dont know what/
     if 0:  # linear transition
         xfade = np.linspace(1, 0, N)
-    elif 0:  # exponential transition
+    elif 1:  # exponential transition
         n = np.arange(N)
         scaler = 20
         xfade = 2 / (1 + np.exp(scaler * n / (N-1)))
     else:
         xfade = np.linspace(1,1,N)
-    print(xfade)
+    #print(xfade)
 
-    #FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
-    FF[:,:3] =  np.outer(xfade, target2)
+    FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
+    #FF[:,:3] =  np.outer(xfade, target2)
 
     # synthesize
     s.params["FF"] = FF.T
