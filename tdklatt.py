@@ -5,8 +5,6 @@ Provides a number of functions and classes which enable the user to synthesize
 speech waveforms ala Klatt 1980. Currently supports the Klatt 1980 algorithm at
 10 kHz sampling rate.
 
-It doesn't work so well after twisting stuff. --Fe
-
 Classes:
     KlattParam1980: Object containing all paramteres for Klatt synthesizer
     KlattSynth: Top-level KlattSynth object.
@@ -20,7 +18,7 @@ Functions:
         a KlattParam1980 object
 
 Examples:
-    Create a /pa/ and plot a figure showing the spectrogram and time waveform.
+    Create a /di/ and plot a figure showing the spectrogram and time waveform.
     >>> python tdklatt.py
 
     Create a synthesizer with default settings, run it, and hear the output.
@@ -41,6 +39,7 @@ Examples:
 
 simpleaudio_avail=True
 try:
+    import sys
     import math
     import numpy as np
     from scipy.signal import resample_poly
@@ -48,7 +47,6 @@ try:
 except ImportError:
     print("Missing one or more required modules.")
     print("Please make sure that math, numpy, scipy, and simpleaudio are installed.")
-    import sys
     sys.exit()
 try:
     import simpleaudio as sa
@@ -1192,15 +1190,21 @@ class Switch(KlattComponent):
 
 
 if __name__ == '__main__':
-    s = klatt_make(KlattParam1980(DUR=0.5,FS=16000)) # Creates a Klatt synthesizer w/ default settings
+    s = klatt_make(KlattParam1980(DUR=0.5, FS=16000, AV=90)) # Creates a Klatt synthesizer w/ default settings
     # see also: http://www.fon.hum.uva.nl/david/ma_ssp/doc/Klatt-1980-JAS000971.pdf
-    # I haven't figured out how it generates stops. --Fe
 
     N = s.params["N_SAMP"]
     F0 = s.params["F0"]
     FF = np.asarray(s.params["FF"]).T
+    BW = np.asarray(s.params["BW"]).T
     AV = s.params["AV"]
     AH = s.params['AH']
+    A1 = s.params['A1']
+    A2 = s.params['A2']
+    A3 = s.params['A3']
+    A4 = s.params['A4']
+    A5 = s.params['A5']
+    A6 = s.params['A6']
 
     # F0
     F0[:] = np.linspace(250, 250, N)  # a falling F0 contour
@@ -1208,7 +1212,7 @@ if __name__ == '__main__':
 
     # amplitude / voicing
     AH[:] = np.linspace(1, 0, N) ** 0.1 * 30
-    if 0:  # unvoiced consonant
+    if 0:  # unvoiced aspirated consonant
         Nv1 = 1000  # start of unvoiced-voiced transition
         Nv2 = 1500  # end of unvoiced-voiced transition
         Nv3 = 2300
@@ -1221,6 +1225,9 @@ if __name__ == '__main__':
     # FF
     target1 = np.r_[200, 1600, 2600]  # /d/
     target2 = np.r_[280, 2250, 2750]  # /i/
+    # BW
+    btarget1 = np.r_[60,100,170] #/d/
+    btarget2 = np.r_[45,200,400] #/i/
     if 0:  # linear transition
         xfade = np.linspace(1, 0, N)
     elif 1:  # exponential transition
@@ -1232,10 +1239,17 @@ if __name__ == '__main__':
     #print(xfade)
 
     FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
+    BW[:,:3] = np.outer(xfade, btarget1) + np.outer((1 - xfade), btarget2)
     #FF[:,:3] =  np.outer(xfade, target2)
+    A3[:1000] = 47
+    A4[:1000] = 60
+    A5[:1000] = 62
+    A6[:1000] = 60
+    
 
     # synthesize
     s.params["FF"] = FF.T
+    s.params["BW"] = BW.T
 
     s.run()
     #s.play()
@@ -1243,7 +1257,10 @@ if __name__ == '__main__':
 
     # visualize
     t = np.arange(len(s.output)) / s.params['FS']
-    import matplotlib.pyplot as plt
+    try:
+        import matplotlib.pyplot as plt
+    except:
+        sys.exit()
     ax = plt.subplot(211)
     plt.plot(t, s.output)
     plt.axis(ymin=-1, ymax=1)
@@ -1259,3 +1276,4 @@ if __name__ == '__main__':
     plt.ylabel('frequency [Hz]')
     plt.savefig('figure.pdf')
     plt.show()
+
