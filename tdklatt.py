@@ -5,8 +5,6 @@ Provides a number of functions and classes which enable the user to synthesize
 speech waveforms ala Klatt 1980. Currently supports the Klatt 1980 algorithm at
 10 kHz sampling rate.
 
-It doesn't work so well after twisting stuff. --Fe
-
 Classes:
     KlattParam1980: Object containing all paramteres for Klatt synthesizer
     KlattSynth: Top-level KlattSynth object.
@@ -39,9 +37,11 @@ Examples:
     >>> s.play()
 """
 
-simpleaudio_avail=True
-mpl_avail=True
+simpleaudio_avail = True
+plt_avail = True
+dbg = True
 try:
+    import sys
     import math
     import numpy as np
     from scipy.signal import resample_poly
@@ -49,17 +49,17 @@ try:
 except ImportError:
     print("Missing one or more required modules.")
     print("Please make sure that math, numpy, scipy, and simpleaudio are installed.")
-    import sys
     sys.exit()
 try:
     import simpleaudio as sa
 except ImportError:
-    simpleaudio_avail=False
+    simpleaudio_avail = False
 
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    mpl_avail=False
+    plt_avail = False
+
 def klatt_make(params=None):
     """
     Creates and prepares a KlattSynth object.
@@ -497,21 +497,14 @@ class KlattComponent:
         NOTE: Mixer has a custom implementation of receive, but it interfaces
         identically, so you don't need to worry about it.
         """
-        print("Running: %s"%self.name)
-        xcor=np.arange(0,self.mast.params["N_SAMP"])/self.mast.params["DT"]
-        plt.title(self.name)
-        plt.xlabel("time")
-        plt.ylabel("value")
-        plt.plot(xcor,self.output)
-        plt.show()
-        """
-        for i in range(0,self.mast.params["N_SAMP"]):
-            if i==0 or "%.2f"%self.output[i]!="%.2f"%self.output[i-1]:
-                print("%d=%.3f; "%(i,self.output[i]),end=",")
-            #if i%500==0:
-            #    print("%.3f"%self.output[i],end=",")
-        print("\n")
-        """
+        if dbg and __name__ == "__main__" and plt_avail:
+            print("Running: %s"%self.name)
+            xcor=np.arange(0,self.mast.params["N_SAMP"])/self.mast.params["DT"]
+            plt.title(self.name)
+            plt.xlabel("time")
+            plt.ylabel("value")
+            plt.plot(xcor,self.output)
+            plt.show()
         for dest in self.dests:
             dest.receive(signal=self.output[:])
 
@@ -1237,13 +1230,13 @@ class Switch(KlattComponent):
 
 
 if __name__ == '__main__':
-    s = klatt_make(KlattParam1980(DUR=0.5,FS=16000)) # Creates a Klatt synthesizer w/ default settings
+    s = klatt_make(KlattParam1980(DUR=0.5, FS=16000, AV=90)) # Creates a Klatt synthesizer w/ default settings
     # see also: http://www.fon.hum.uva.nl/david/ma_ssp/doc/Klatt-1980-JAS000971.pdf
-    # I haven't figured out how it generates stops. --Fe
 
     N = s.params["N_SAMP"]
     F0 = s.params["F0"]
     FF = np.asarray(s.params["FF"]).T
+    BW = np.asarray(s.params["BW"]).T
     AV = s.params["AV"]
     AH = s.params['AH']
     A1 = s.params['A1']
@@ -1273,6 +1266,9 @@ if __name__ == '__main__':
     # FF
     target1 = np.r_[200, 1600, 2600]  # /d/
     target2 = np.r_[280, 2250, 2750]  # /i/
+    # BW
+    btarget1 = np.r_[60,100,170] #/d/
+    btarget2 = np.r_[45,200,400] #/i/
     if 0:  # linear transition
         xfade = np.linspace(1, 0, N)
     elif 1:  # exponential transition
@@ -1282,6 +1278,7 @@ if __name__ == '__main__':
     else:
         xfade = np.linspace(1,1,N)
     #print(xfade)
+    #print(SW)
 
     FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
     A3[:1000] = 47
@@ -1289,12 +1286,17 @@ if __name__ == '__main__':
     A4[:1000] = 60
     A5[:1000] = 62
     A6[:1000] = 60
-    #SW[:] = 1
-
+    BW[:,:3] = np.outer(xfade, btarget1) + np.outer((1 - xfade), btarget2)
     #FF[:,:3] =  np.outer(xfade, target2)
+    A3[:1000] = 47
+    A4[:1000] = 60
+    A5[:1000] = 62
+    A6[:1000] = 60
+
 
     # synthesize
     s.params["FF"] = FF.T
+    s.params["BW"] = BW.T
 
     s.run()
     # s.play()
@@ -1303,17 +1305,18 @@ if __name__ == '__main__':
     # visualize
     t = np.arange(len(s.output)) / s.params['FS']
     ax = plt.subplot(211)
-    plt.plot(t, s.output)
-    plt.axis(ymin=-1, ymax=1)
-    plt.ylabel('amplitude')
-    plt.twinx()
-    plt.plot(t, AV, 'r', label='AV')
-    plt.plot(t, AH, 'g', label='AH')
-    plt.legend()
-    plt.subplot(212, sharex=ax)
-    plt.specgram(s.output, Fs=s.params['FS'])
-    plt.plot(t, FF, alpha=0.5)
-    plt.xlabel('time [s]')
-    plt.ylabel('frequency [Hz]')
-    plt.savefig('figure.pdf')
-    plt.show()
+    if plt_avail:
+        plt.plot(t, s.output)
+        plt.axis(ymin=-1, ymax=1)
+        plt.ylabel('amplitude')
+        plt.twinx()
+        plt.plot(t, AV, 'r', label='AV')
+        plt.plot(t, AH, 'g', label='AH')
+        plt.legend()
+        plt.subplot(212, sharex=ax)
+        plt.specgram(s.output, Fs=s.params['FS'])
+        plt.plot(t, FF, alpha=0.5)
+        plt.xlabel('time [s]')
+        plt.ylabel('frequency [Hz]')
+        plt.savefig('figure.pdf')
+        plt.show()
