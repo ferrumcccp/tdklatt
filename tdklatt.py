@@ -40,6 +40,7 @@ Examples:
 """
 
 simpleaudio_avail=True
+mpl_avail=True
 try:
     import math
     import numpy as np
@@ -55,6 +56,10 @@ try:
 except ImportError:
     simpleaudio_avail=False
 
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    mpl_avail=False
 def klatt_make(params=None):
     """
     Creates and prepares a KlattSynth object.
@@ -460,6 +465,7 @@ class KlattComponent:
     """
     def __init__(self, mast, dests=None):
         self.mast = mast
+        self.name = self.__class__.__name__
         if dests is None:
             self.dests = []
         else:
@@ -490,6 +496,21 @@ class KlattComponent:
 
         NOTE: Mixer has a custom implementation of receive, but it interfaces
         identically, so you don't need to worry about it.
+        """
+        print("Running: %s"%self.name)
+        xcor=np.arange(0,self.mast.params["N_SAMP"])/self.mast.params["DT"]
+        plt.title(self.name)
+        plt.xlabel("time")
+        plt.ylabel("value")
+        plt.plot(xcor,self.output)
+        plt.show()
+        """
+        for i in range(0,self.mast.params["N_SAMP"]):
+            if i==0 or "%.2f"%self.output[i]!="%.2f"%self.output[i-1]:
+                print("%d=%.3f; "%(i,self.output[i]),end=",")
+            #if i%500==0:
+            #    print("%.3f"%self.output[i],end=",")
+        print("\n")
         """
         for dest in self.dests:
             dest.receive(signal=self.output[:])
@@ -547,11 +568,17 @@ class KlattVoice1980(KlattSection):
         KlattSection.__init__(self, mast)
         self.impulse = Impulse(mast=self.mast)
         self.rgp = Resonator(mast=self.mast)
+        self.rgp.name = "Resonator: Glottal Pole"
         self.rgz = Resonator(mast=self.mast, anti=True)
+        self.rgz.name = "Resonator: Glottal Zero"
         self.rgs = Resonator(mast=self.mast)
+        self.rgs.name = "Resonator: Glottal Quasi-sin"
         self.av = Amplifier(mast=self.mast)
+        self.av.name = "Amplifier: Voice"
         self.avs = Amplifier(mast=self.mast)
+        self.avs.name = "Amplifier: Voice Quasi-sin"
         self.mixer = Mixer(mast=self.mast)
+        self.mixer.name = "Mixer: Voice and Voice Quasi-sin"
         self.switch = Switch(mast=self.mast)
         self.components = [self.impulse, self.rgp, self.rgz, self.rgs, \
                            self.av, self.avs, self.mixer, self.switch]
@@ -642,12 +669,16 @@ class KlattCascade1980(KlattSection):
     def __init__(self, mast):
         KlattSection.__init__(self, mast)
         self.ah = Amplifier(mast=self.mast)
+        self.ah.name= "Amplifier: Aspiration"
         self.mixer = Mixer(mast=self.mast)
         self.rnp = Resonator(mast=self.mast)
+        self.rnp.name = "Resonator: Nasal Pole"
         self.rnz = Resonator(mast=self.mast, anti=True)
+        self.rnz.name = "Resonator: Nasal Zero"
         self.formants = []
         for form in range(self.mast.params["N_FORM"]):
             self.formants.append(Resonator(mast=self.mast))
+            self.formants[form].name = "Resonator: F%d"%(form+1)
         self.components = [self.ah, self.mixer, self.rnp, self.rnz] + \
             self.formants
 
@@ -750,9 +781,23 @@ class KlattParallel1980(KlattSection):
         # to give to it... need to keep reading Klatt 1980.
         self.a6 = Amplifier(mast=self.mast)
         self.r6 = Resonator(mast=self.mast)
+
+        self.a1.name = "Amplifier: 1 Parallel"
+        self.a2.name = "Amplifier: 2 Parallel"
+        self.a3.name = "Amplifier: 3 Parallel"
+        self.a4.name = "Amplifier: 4 Parallel"
+        self.a5.name = "Amplifier: 5 Parallel"
+        self.a6.name = "Amplifier: 6 Parallel"
+        self.r1.name = "Resonator: 1 Parallel"
+        self.r2.name = "Resonator: 2 Parallel"
+        self.r3.name = "Resonator: 3 Parallel"
+        self.r4.name = "Resonator: 4 Parallel"
+        self.r5.name = "Resonator: 5 Parallel"
+        self.r6.name = "Resonator: 6 Parallel"
         # TODO: ab currently not part of self.do()! Not sure what values to give
         # to it... need to keep reading Klatt 1980.
         self.ab = Amplifier(mast=self.mast)
+        self.a6.name = "Amplifier: Bypass Parallel"
         self.output_mixer = Mixer(mast=self.mast)
         self.components = [self.af, self.a1, self.r1, self.first_diff, \
                            self.mixer, self.an, self.rnp, self.a2, self.r2, \
@@ -1215,7 +1260,7 @@ if __name__ == '__main__':
 
     # amplitude / voicing
     AH[:] = np.linspace(1, 0, N) ** 0.1 * 30
-    if 0:  # unvoiced consonant
+    if 0:  # unvoiced aspirated consonant
         Nv1 = 1000  # start of unvoiced-voiced transition
         Nv2 = 1500  # end of unvoiced-voiced transition
         Nv3 = 2300
@@ -1239,12 +1284,12 @@ if __name__ == '__main__':
     #print(xfade)
 
     FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
-    #A3[:1000] = 47
+    A3[:1000] = 47
     print(A3)
-    #A4[:1000] = 60
-    #A5[:1000] = 62
-    #A6[:1000] = 60
-    SW[:] = 1
+    A4[:1000] = 60
+    A5[:1000] = 62
+    A6[:1000] = 60
+    #SW[:] = 1
 
     #FF[:,:3] =  np.outer(xfade, target2)
 
@@ -1252,12 +1297,11 @@ if __name__ == '__main__':
     s.params["FF"] = FF.T
 
     s.run()
-    s.play()
+    # s.play()
     s.save('synth3.wav')
 
     # visualize
     t = np.arange(len(s.output)) / s.params['FS']
-    import matplotlib.pyplot as plt
     ax = plt.subplot(211)
     plt.plot(t, s.output)
     plt.axis(ymin=-1, ymax=1)
