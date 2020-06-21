@@ -1245,7 +1245,6 @@ if __name__ == '__main__':
     A4 = s.params['A4']
     A5 = s.params['A5']
     A6 = s.params['A6']
-    SW = s.params['SW']
 
     # F0
     F0[:] = np.linspace(250, 250, N)  # a falling F0 contour
@@ -1281,18 +1280,12 @@ if __name__ == '__main__':
     #print(SW)
 
     FF[:,:3] = np.outer(xfade, target1) + np.outer((1 - xfade), target2)
-    A3[:1000] = 47
-    print(A3)
-    A4[:1000] = 60
-    A5[:1000] = 62
-    A6[:1000] = 60
     BW[:,:3] = np.outer(xfade, btarget1) + np.outer((1 - xfade), btarget2)
     #FF[:,:3] =  np.outer(xfade, target2)
     A3[:1000] = 47
     A4[:1000] = 60
     A5[:1000] = 62
     A6[:1000] = 60
-
 
     # synthesize
     s.params["FF"] = FF.T
